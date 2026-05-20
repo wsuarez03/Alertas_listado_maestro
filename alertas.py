@@ -12,7 +12,7 @@ from dateutil.relativedelta import relativedelta
 # CONFIGURACION
 # =====================================================
 
-EXCEL_URL = "https://valserindustriales-my.sharepoint.com/:x:/p/sst/IQDAwbM-LAyqSYzysaGTnRooAUZJRuK8wwFzV7eMWEMJ-DU\?download=1"
+EXCEL_URL = "https://valserindustriales-my.sharepoint.com/personal/sst_valserindustriales_com/_layouts/15/download.aspx?share=IQDAwbM-LAyqSYzysaGTnRooAUZJRuK8wwFzV7eMWEMJ-DU"
 
 CORREOS_DESTINO = [
     "tecnicodeservicos@valserindustriales.com"
@@ -32,15 +32,25 @@ DIAS_ALERTA = 30
 
 def descargar_excel():
 
-    r = requests.get(EXCEL_URL, allow_redirects=True)
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    r = requests.get(
+        EXCEL_URL,
+        headers=headers,
+        allow_redirects=True
+    )
 
     if r.status_code != 200:
-        raise Exception(f"No fue posible descargar el Excel. Codigo HTTP: {r.status_code}")
+        raise Exception(
+            f"No fue posible descargar el Excel. HTTP {r.status_code}"
+        )
 
-    content_type = r.headers.get("Content-Type", "").lower()
-
-    if "html" in content_type:
-        raise Exception("OneDrive no entregó el archivo Excel directamente. Verificar que el archivo tenga permisos de acceso mediante enlace y que el parámetro ?download=1 esté funcionando correctamente.")
+    if len(r.content) < 1000:
+        raise Exception(
+            "El archivo descargado parece inválido o vacío."
+        )
 
     return r.content
 
