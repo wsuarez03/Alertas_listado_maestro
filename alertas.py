@@ -204,7 +204,9 @@ def generar_tabla(df, titulo):
 
         filas += f"""
         <tr>
-            <td style="white-space: nowrap;">{codigo}</td>
+            <td style="white-space: nowrap; min-width: 140px;">
+                <span style="white-space: nowrap;">{codigo}</span>
+            </td>
             <td>{nombre}</td>
             <td>{fecha_vencimiento}</td>
             <td>{dias}</td>
