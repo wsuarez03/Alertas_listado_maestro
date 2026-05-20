@@ -274,7 +274,7 @@ def main():
         print("No hay alertas para enviar")
         return
 
-    html = "<h1>ALERTAS REVISION DOCUMENTAL</h1>"
+    html = "<h1>Alerta revisón documental OHSQ-FO-34</h1>"
 
     html += generar_tabla(
         proximos,
