@@ -5,7 +5,6 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 # =====================================================
@@ -163,33 +162,37 @@ def generar_tabla(df, titulo):
 
     for _, row in df.iterrows():
 
-       proceso = str(row["PROCESO"]).replace("\n", "").replace("\r", "").strip()
-        
-        tipo = str(row["TIPO"]).replace("\n", "").replace("\r", "").strip()
-
-            consecutivo = (
-                str(row["CONSECUTIVO"])
-                .replace("\n", "")
-                .replace("\r", "")
-                .strip()
-            )
-            
-            # Convertir 1 -> 01
-            if consecutivo.isdigit():
-                consecutivo = consecutivo.zfill(2)
-            
-            codigo = f"{proceso}-{tipo}-{consecutivo}"
-            
-            # Limpieza final
-            codigo = " ".join(codigo.split())
-
-        nombre = row["NOMBRE DEL DOCUMENTO"]
-
-        fecha_revision = (
-            row["FECHA"].strftime("%Y-%m-%d")
-            if pd.notna(row["FECHA"])
-            else "Sin fecha"
+        proceso = (
+            str(row["PROCESO"])
+            .replace("\n", "")
+            .replace("\r", "")
+            .strip()
         )
+
+        tipo = (
+            str(row["TIPO"])
+            .replace("\n", "")
+            .replace("\r", "")
+            .strip()
+        )
+
+        consecutivo = (
+            str(row["CONSECUTIVO"])
+            .replace("\n", "")
+            .replace("\r", "")
+            .strip()
+        )
+
+        # Convertir 1 -> 01
+        if consecutivo.isdigit():
+            consecutivo = consecutivo.zfill(2)
+
+        codigo = f"{proceso}-{tipo}-{consecutivo}"
+
+        # Limpieza final
+        codigo = " ".join(codigo.split())
+
+        nombre = str(row["NOMBRE DEL DOCUMENTO"]).strip()
 
         fecha_vencimiento = (
             row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
@@ -211,8 +214,8 @@ def generar_tabla(df, titulo):
     html = f"""
     <h2>{titulo}</h2>
 
-    <table border="1" cellspacing="0" cellpadding="5">
-        <tr>
+    <table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; font-family: Arial;">
+        <tr style="background-color: #f2f2f2;">
             <th>CODIGO</th>
             <th>NOMBRE</th>
             <th>FECHA VENCIMIENTO</th>
@@ -291,11 +294,11 @@ def main():
         print("No hay alertas para enviar")
         return
 
-    html = "<h1>Alerta revisón documental OHSQ-FO-34</h1>"
+    html = "<h1>Alerta revisión documental OHSQ-FO-34</h1>"
 
     html += generar_tabla(
         proximos,
-        "Documentos proximos a vencer"
+        "Documentos próximos a vencer"
     )
 
     html += generar_tabla(
@@ -304,7 +307,7 @@ def main():
     )
 
     enviar_correo(
-        "Alerta revisón documental OHSQ-FO-34",
+        "Alerta revisión documental OHSQ-FO-34",
         html
     )
 
