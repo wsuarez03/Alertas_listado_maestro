@@ -20,6 +20,7 @@ CORREOS_DESTINO = [
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
+
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASS = os.getenv("SMTP_PASS")
 
@@ -66,13 +67,14 @@ def cargar_excel(bytes_excel):
         header=3
     )
 
+    # Limpiar nombres de columnas
     df.columns = [str(c).strip() for c in df.columns]
 
-        print("COLUMNAS ENCONTRADAS:")
-        for c in df.columns:
-            print(repr(c))
+    print("COLUMNAS ENCONTRADAS:")
+    for c in df.columns:
+        print(repr(c))
 
-    # Eliminar filas vacias
+    # Eliminar filas completamente vacías
     df = df.dropna(how="all")
 
     return df
@@ -87,7 +89,7 @@ def preparar_datos(df):
 
     # Convertir fecha
     df["FECHA"] = pd.to_datetime(
-        df["FECHA "],
+        df["FECHA"],
         errors="coerce"
     )
 
@@ -135,7 +137,7 @@ def preparar_datos(df):
 
 def clasificar_alertas(df):
 
-    # Proximos a vencer
+    # Próximos a vencer
     proximos = df[
         (df["DIAS_RESTANTES"] >= 0) &
         (df["DIAS_RESTANTES"] <= DIAS_ALERTA)
@@ -165,9 +167,17 @@ def generar_tabla(df, titulo):
 
         nombre = row["NOMBRE DEL DOCUMENTO"]
 
-        fecha_revision = row["FECHA"].strftime("%Y-%m-%d") if pd.notna(row["FECHA"]) else "Sin fecha"
+        fecha_revision = (
+            row["FECHA"].strftime("%Y-%m-%d")
+            if pd.notna(row["FECHA"])
+            else "Sin fecha"
+        )
 
-        fecha_vencimiento = row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d") if pd.notna(row["FECHA_VENCIMIENTO"]) else "Sin fecha"
+        fecha_vencimiento = (
+            row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
+            if pd.notna(row["FECHA_VENCIMIENTO"])
+            else "Sin fecha"
+        )
 
         dias = row["DIAS_RESTANTES"]
 
@@ -192,8 +202,11 @@ def generar_tabla(df, titulo):
             <th>FECHA VENCIMIENTO</th>
             <th>DIAS</th>
         </tr>
+
         {filas}
+
     </table>
+
     <br>
     """
 
@@ -213,9 +226,17 @@ def enviar_correo(asunto, html):
 
     msg.attach(MIMEText(html, "html"))
 
-    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server = smtplib.SMTP(
+        SMTP_SERVER,
+        SMTP_PORT
+    )
+
     server.starttls()
-    server.login(SMTP_USER, SMTP_PASS)
+
+    server.login(
+        SMTP_USER,
+        SMTP_PASS
+    )
 
     server.sendmail(
         SMTP_USER,
