@@ -163,16 +163,25 @@ def generar_tabla(df, titulo):
 
     for _, row in df.iterrows():
 
-        consecutivo = str(row["CONSECUTIVO"]).strip()
+       proceso = str(row["PROCESO"]).replace("\n", "").replace("\r", "").strip()
+        
+        tipo = str(row["TIPO"]).replace("\n", "").replace("\r", "").strip()
 
-        # Convertir 1 -> 01
-        if consecutivo.isdigit():
-            consecutivo = consecutivo.zfill(2)
-        
-        codigo = f"{row['PROCESO']}-{row['TIPO']}-{consecutivo}"
-        
-        # Evitar saltos de línea
-        codigo = codigo.replace("\n", "").replace("\r", "").strip()
+            consecutivo = (
+                str(row["CONSECUTIVO"])
+                .replace("\n", "")
+                .replace("\r", "")
+                .strip()
+            )
+            
+            # Convertir 1 -> 01
+            if consecutivo.isdigit():
+                consecutivo = consecutivo.zfill(2)
+            
+            codigo = f"{proceso}-{tipo}-{consecutivo}"
+            
+            # Limpieza final
+            codigo = " ".join(codigo.split())
 
         nombre = row["NOMBRE DEL DOCUMENTO"]
 
