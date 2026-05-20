@@ -197,7 +197,6 @@ def generar_tabla(df, titulo):
         <tr>
             <th>CODIGO</th>
             <th>NOMBRE</th>
-            <th>FECHA REVISION</th>
             <th>FECHA VENCIMIENTO</th>
             <th>DIAS</th>
         </tr>
@@ -278,16 +277,16 @@ def main():
 
     html += generar_tabla(
         proximos,
-        "DOCUMENTOS PROXIMOS A VENCER"
+        "Documentos proximos a vencer"
     )
 
     html += generar_tabla(
         vencidos,
-        "DOCUMENTOS VENCIDOS"
+        "Documentos vencidos"
     )
 
     enviar_correo(
-        "ALERTA REVISION DOCUMENTAL",
+        "Alerta revisón documental OHSQ-FO-34",
         html
     )
 
