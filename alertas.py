@@ -14,7 +14,12 @@ from dateutil.relativedelta import relativedelta
 EXCEL_URL = "https://valserindustriales-my.sharepoint.com/personal/sst_valserindustriales_com/_layouts/15/download.aspx?share=IQDAwbM-LAyqSYzysaGTnRooAUZJRuK8wwFzV7eMWEMJ-DU"
 
 CORREOS_DESTINO = [
-    "Tecnicodeservicios@valserindustriales.com"
+    "Tecnicodeservicios@valserindustriales.com",
+   # "sst@valserindustriales.com",
+   # "asesorcomercial@valserindustriales.com",
+   # "proyectos@valserindustriales.com",
+   # "contabilidad@valserindustriales.com"
+    
 ]
 
 SMTP_SERVER = "smtp.gmail.com"
@@ -158,81 +163,102 @@ def generar_tabla(df, titulo):
     if df.empty:
         return ""
 
-    filas = ""
+    html = f"<h2>{titulo}</h2>"
 
-    for _, row in df.iterrows():
+    # Limpiar columnas para agrupación
+    df["PROCESO_LIMPIO"] = (
+        df["PROCESO"]
+        .astype(str)
+        .str.replace("\n", "", regex=False)
+        .str.replace("\r", "", regex=False)
+        .str.strip()
+    )
 
-        proceso = (
-            str(row["PROCESO"])
-            .replace("\n", "")
-            .replace("\r", "")
-            .strip()
-        )
+    df["TIPO_LIMPIO"] = (
+        df["TIPO"]
+        .astype(str)
+        .str.replace("\n", "", regex=False)
+        .str.replace("\r", "", regex=False)
+        .str.strip()
+    )
 
-        tipo = (
-            str(row["TIPO"])
-            .replace("\n", "")
-            .replace("\r", "")
-            .strip()
-        )
+    # Agrupar por PROCESO y TIPO
+    grupos = df.groupby(
+        ["PROCESO_LIMPIO", "TIPO_LIMPIO"],
+        dropna=False
+    )
 
-        consecutivo = (
-            str(row["CONSECUTIVO"])
-            .replace("\n", "")
-            .replace("\r", "")
-            .strip()
-        )
+    for (proceso, tipo), grupo in grupos:
 
-        # Convertir 1 -> 01
-        if consecutivo.isdigit():
-            consecutivo = consecutivo.zfill(2)
-
-        codigo = f"{proceso}-{tipo}-{consecutivo}"
-
-        # Limpieza final
-        codigo = " ".join(codigo.split())
-
-        nombre = str(row["NOMBRE DEL DOCUMENTO"]).strip()
-
-        fecha_vencimiento = (
-            row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
-            if pd.notna(row["FECHA_VENCIMIENTO"])
-            else "Sin fecha"
-        )
-
-        dias = row["DIAS_RESTANTES"]
-
-        filas += f"""
-        <tr>
-            <td style="white-space: nowrap; min-width: 140px;">
-                <span style="white-space: nowrap;">{codigo}</span>
-            </td>
-            <td>{nombre}</td>
-            <td>{fecha_vencimiento}</td>
-            <td>{dias}</td>
-        </tr>
+        html += f"""
+        <h3 style="margin-top: 25px;">
+            PROCESO: {proceso} | TIPO: {tipo}
+        </h3>
         """
 
-    html = f"""
-    <h2>{titulo}</h2>
+        filas = ""
 
-    <table border="1" cellspacing="0" cellpadding="5" style="border-collapse: collapse; font-family: Arial;">
-        <tr style="background-color: #f2f2f2;">
-            <th>CODIGO</th>
-            <th>NOMBRE</th>
-            <th>FECHA VENCIMIENTO</th>
-            <th>DIAS</th>
-        </tr>
+        for _, row in grupo.iterrows():
 
-        {filas}
+            consecutivo = (
+                str(row["CONSECUTIVO"])
+                .replace("\n", "")
+                .replace("\r", "")
+                .strip()
+            )
 
-    </table>
+            # Convertir 1 -> 01
+            if consecutivo.isdigit():
+                consecutivo = consecutivo.zfill(2)
 
-    <br>
-    """
+            codigo = f"{proceso}-{tipo}-{consecutivo}"
+
+            codigo = " ".join(codigo.split())
+
+            fecha_vencimiento = (
+                row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
+                if pd.notna(row["FECHA_VENCIMIENTO"])
+                else "Sin fecha"
+            )
+
+            dias = row["DIAS_RESTANTES"]
+
+            filas += f"""
+            <tr>
+                <td style="white-space: nowrap; min-width: 140px;">
+                    <span style="white-space: nowrap;">{codigo}</span>
+                </td>
+
+                <td>{fecha_vencimiento}</td>
+
+                <td>{dias}</td>
+            </tr>
+            """
+
+        html += f"""
+        <table
+            border="1"
+            cellspacing="0"
+            cellpadding="5"
+            style="
+                border-collapse: collapse;
+                font-family: Arial;
+                margin-bottom: 25px;
+            "
+        >
+
+            <tr style="background-color: #f2f2f2;">
+                <th>CODIGO</th>
+                <th>FECHA VENCIMIENTO</th>
+                <th>DIAS</th>
+            </tr>
+
+            {filas}
+
+        </table>
+        """
 
     return html
-
 # =====================================================
 # ENVIAR CORREO
 # =====================================================
