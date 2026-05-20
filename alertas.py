@@ -185,7 +185,6 @@ def generar_tabla(df, titulo):
         <tr>
             <td>{codigo}</td>
             <td>{nombre}</td>
-            <td>{fecha_revision}</td>
             <td>{fecha_vencimiento}</td>
             <td>{dias}</td>
         </tr>
