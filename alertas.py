@@ -18,7 +18,8 @@ CORREOS_DESTINO = [
    # "sst@valserindustriales.com",
    # "asesorcomercial@valserindustriales.com",
    # "proyectos@valserindustriales.com",
-   # "contabilidad@valserindustriales.com"
+   # "contabilidad@valserindustriales.com",
+   # "comercial@valserindustriales.com"
     
 ]
 
