@@ -163,7 +163,16 @@ def generar_tabla(df, titulo):
 
     for _, row in df.iterrows():
 
-        codigo = f"{row['PROCESO']}-{row['TIPO']}-{row['CONSECUTIVO']}"
+        consecutivo = str(row["CONSECUTIVO"]).strip()
+
+        # Convertir 1 -> 01
+        if consecutivo.isdigit():
+            consecutivo = consecutivo.zfill(2)
+        
+        codigo = f"{row['PROCESO']}-{row['TIPO']}-{consecutivo}"
+        
+        # Evitar saltos de línea
+        codigo = codigo.replace("\n", "").replace("\r", "").strip()
 
         nombre = row["NOMBRE DEL DOCUMENTO"]
 
@@ -183,7 +192,7 @@ def generar_tabla(df, titulo):
 
         filas += f"""
         <tr>
-            <td>{codigo}</td>
+            <td style="white-space: nowrap;">{codigo}</td>
             <td>{nombre}</td>
             <td>{fecha_vencimiento}</td>
             <td>{dias}</td>
