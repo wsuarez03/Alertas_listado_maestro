@@ -15,7 +15,7 @@ from dateutil.relativedelta import relativedelta
 EXCEL_URL = "https://valserindustriales-my.sharepoint.com/personal/sst_valserindustriales_com/_layouts/15/download.aspx?share=IQDAwbM-LAyqSYzysaGTnRooAUZJRuK8wwFzV7eMWEMJ-DU"
 
 CORREOS_DESTINO = [
-    "tecnicodeservicos@valserindustriales.com"
+    "Tecnicodeservicios@valserindustriales.com"
 ]
 
 SMTP_SERVER = "smtp.gmail.com"
