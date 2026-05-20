@@ -68,6 +68,10 @@ def cargar_excel(bytes_excel):
 
     df.columns = [str(c).strip() for c in df.columns]
 
+        print("COLUMNAS ENCONTRADAS:")
+        for c in df.columns:
+            print(repr(c))
+
     # Eliminar filas vacias
     df = df.dropna(how="all")
 
@@ -236,6 +240,8 @@ def main():
     df = cargar_excel(excel_bytes)
 
     print("Preparando datos...")
+
+    print(df.columns.tolist())
 
     df = preparar_datos(df)
 
