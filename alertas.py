@@ -1,3 +1,12 @@
+
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module="openpyxl"
+)
+
 import pandas as pd
 import requests
 import io
@@ -216,14 +225,30 @@ def preparar_datos(df):
 
 def clasificar_alertas(df):
 
+    # ============================================
+    # ELIMINAR REGISTROS SIN FECHA VALIDA
+    # ============================================
+
+    df = df[
+        df["DIAS_RESTANTES"].notna()
+    ].copy()
+
+    # ============================================
+    # PROXIMOS A VENCER
+    # ============================================
+
     proximos = df[
         (df["DIAS_RESTANTES"] >= 0) &
         (df["DIAS_RESTANTES"] <= DIAS_ALERTA)
-    ] .copy()
+    ].copy()
+
+    # ============================================
+    # VENCIDOS
+    # ============================================
 
     vencidos = df[
         (df["DIAS_RESTANTES"] < 0)
-    ] .copy()
+    ].copy()
 
     return proximos, vencidos
 
@@ -238,6 +263,21 @@ def clasificar_severidad(df):
     ordenes = []
 
     for dias in df["DIAS_RESTANTES"]:
+
+        # ============================================
+        # SIN FECHA / SIN CALCULO
+        # ============================================
+
+        if pd.isna(dias):
+
+            severidades.append(
+                "⚪ Sin fecha de vencimiento"
+            )
+
+            colores.append("#eeeeee")
+            ordenes.append(99)
+
+            continue
 
         # ============================================
         # PROXIMOS
@@ -701,7 +741,7 @@ def main():
     df_alertas = pd.concat([ 
         proximos, 
         vencidos 
-    ]) 
+    ]).drop_duplicates() 
     html += generar_dashboard(df_alertas)
 
     html += generar_tabla(
