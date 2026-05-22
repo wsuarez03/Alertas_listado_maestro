@@ -68,6 +68,7 @@ def cargar_excel(bytes_excel):
     )
 
     df.columns = [str(c).strip() for c in df.columns]
+    # NORMALIZAR NOMBRES DE COLUMNAS df.columns = ( df.columns .str.upper() .str.strip() )
 
     print("COLUMNAS ENCONTRADAS:")
     for c in df.columns:
@@ -128,13 +129,16 @@ def preparar_datos(df):
 
     # CAMBIAR "NOMBRE" SI TU COLUMNA SE LLAMA DIFERENTE
 
+
     df["NOMBRE_DOCUMENTO"] = (
-        df["NOMBRE"]
+        df["NOMBRE DEL DOCUMENTO"]
         .astype(str)
         .str.replace("\n", "", regex=False)
         .str.replace("\r", "", regex=False)
         .str.strip()
     )
+    
+
 
     # ============================================
     # PERIODICIDAD
