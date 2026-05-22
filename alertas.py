@@ -1,4 +1,3 @@
-```python
 import pandas as pd
 import requests
 import io
@@ -716,4 +715,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
