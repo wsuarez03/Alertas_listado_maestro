@@ -1,10 +1,13 @@
+```python
 import pandas as pd
 import requests
 import io
 import os
 import smtplib
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
 from dateutil.relativedelta import relativedelta
 
 # =====================================================
@@ -15,12 +18,6 @@ EXCEL_URL = "https://valserindustriales-my.sharepoint.com/personal/sst_valserind
 
 CORREOS_DESTINO = [
     "Tecnicodeservicios@valserindustriales.com",
-   # "sst@valserindustriales.com",
-   # "asesorcomercial@valserindustriales.com",
-   # "proyectos@valserindustriales.com",
-   # "contabilidad@valserindustriales.com",
-   # "comercial@valserindustriales.com"
-    
 ]
 
 SMTP_SERVER = "smtp.gmail.com"
@@ -29,11 +26,10 @@ SMTP_PORT = 587
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASS = os.getenv("SMTP_PASS")
 
-# Dias antes del vencimiento para alertar
 DIAS_ALERTA = 30
 
 # =====================================================
-# DESCARGAR EXCEL DESDE ONEDRIVE
+# DESCARGAR EXCEL
 # =====================================================
 
 def descargar_excel():
@@ -72,14 +68,12 @@ def cargar_excel(bytes_excel):
         header=3
     )
 
-    # Limpiar nombres de columnas
     df.columns = [str(c).strip() for c in df.columns]
 
     print("COLUMNAS ENCONTRADAS:")
     for c in df.columns:
         print(repr(c))
 
-    # Eliminar filas completamente vacías
     df = df.dropna(how="all")
 
     return df
@@ -92,79 +86,14 @@ def preparar_datos(df):
 
     hoy = pd.Timestamp.now().normalize()
 
-    # Convertir fecha
+    # ============================================
+    # FECHAS
+    # ============================================
+
     df["FECHA"] = pd.to_datetime(
         df["FECHA"],
         errors="coerce"
     )
-
-    # Limpiar periodicidad
-    df["PERIODICIDAD REVISIÓN"] = (
-        df["PERIODICIDAD REVISIÓN"]
-        .astype(str)
-        .str.strip()
-        .str.upper()
-    )
-
-    fechas_vencimiento = []
-
-    for _, row in df.iterrows():
-
-        fecha_revision = row["FECHA"]
-        periodicidad = row["PERIODICIDAD REVISIÓN"]
-
-        if pd.isna(fecha_revision):
-            fechas_vencimiento.append(pd.NaT)
-            continue
-
-        if periodicidad == "ANUAL":
-            vencimiento = fecha_revision + relativedelta(years=1)
-
-        elif periodicidad == "BIENAL":
-            vencimiento = fecha_revision + relativedelta(years=2)
-
-        else:
-            vencimiento = pd.NaT
-
-        fechas_vencimiento.append(vencimiento)
-
-    df["FECHA_VENCIMIENTO"] = fechas_vencimiento
-
-    df["DIAS_RESTANTES"] = (
-        df["FECHA_VENCIMIENTO"] - hoy
-    ).dt.days
-
-    return df
-
-# =====================================================
-# CLASIFICAR ALERTAS
-# =====================================================
-
-def clasificar_alertas(df):
-
-    # Próximos a vencer
-    proximos = df[
-        (df["DIAS_RESTANTES"] >= 0) &
-        (df["DIAS_RESTANTES"] <= DIAS_ALERTA)
-    ]
-
-    # Vencidos
-    vencidos = df[
-        (df["DIAS_RESTANTES"] < 0)
-    ]
-
-    return proximos, vencidos
-
-# =====================================================
-# GENERAR TABLA HTML
-# =====================================================
-
-def generar_tabla(df, titulo):
-
-    if df.empty:
-        return ""
-
-    html = f"<h2>{titulo}</h2>"
 
     # ============================================
     # LIMPIAR COLUMNAS
@@ -195,6 +124,75 @@ def generar_tabla(df, titulo):
     )
 
     # ============================================
+    # NOMBRE DOCUMENTO
+    # ============================================
+
+    # CAMBIAR "NOMBRE" SI TU COLUMNA SE LLAMA DIFERENTE
+
+    df["NOMBRE_DOCUMENTO"] = (
+        df["NOMBRE"]
+        .astype(str)
+        .str.replace("\n", "", regex=False)
+        .str.replace("\r", "", regex=False)
+        .str.strip()
+    )
+
+    # ============================================
+    # PERIODICIDAD
+    # ============================================
+
+    df["PERIODICIDAD REVISIÓN"] = (
+        df["PERIODICIDAD REVISIÓN"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+
+    # ============================================
+    # FECHA VENCIMIENTO
+    # ============================================
+
+    fechas_vencimiento = []
+
+    for _, row in df.iterrows():
+
+        fecha_revision = row["FECHA"]
+        periodicidad = row["PERIODICIDAD REVISIÓN"]
+
+        if pd.isna(fecha_revision):
+            fechas_vencimiento.append(pd.NaT)
+            continue
+
+        if periodicidad == "ANUAL":
+
+            vencimiento = (
+                fecha_revision +
+                relativedelta(years=1)
+            )
+
+        elif periodicidad == "BIENAL":
+
+            vencimiento = (
+                fecha_revision +
+                relativedelta(years=2)
+            )
+
+        else:
+            vencimiento = pd.NaT
+
+        fechas_vencimiento.append(vencimiento)
+
+    df["FECHA_VENCIMIENTO"] = fechas_vencimiento
+
+    # ============================================
+    # DIAS RESTANTES
+    # ============================================
+
+    df["DIAS_RESTANTES"] = (
+        df["FECHA_VENCIMIENTO"] - hoy
+    ).dt.days
+
+    # ============================================
     # CONSECUTIVO NUMERICO
     # ============================================
 
@@ -203,108 +201,249 @@ def generar_tabla(df, titulo):
         errors="coerce"
     )
 
-    # ============================================
-    # CLASIFICAR SEVERIDAD
-    # ============================================
+    return df
+
+# =====================================================
+# CLASIFICAR ALERTAS
+# =====================================================
+
+def clasificar_alertas(df):
+
+    proximos = df[
+        (df["DIAS_RESTANTES"] >= 0) &
+        (df["DIAS_RESTANTES"] <= DIAS_ALERTA)
+    ]
+
+    vencidos = df[
+        (df["DIAS_RESTANTES"] < 0)
+    ]
+
+    return proximos, vencidos
+
+# =====================================================
+# CLASIFICAR SEVERIDAD
+# =====================================================
+
+def clasificar_severidad(df):
 
     severidades = []
     colores = []
-    orden_criticidad = []
+    ordenes = []
 
     for dias in df["DIAS_RESTANTES"]:
 
-        # PROXIMOS A VENCER
+        # ============================================
+        # PROXIMOS
+        # ============================================
+
         if dias >= 0:
 
             if dias <= 7:
-                severidades.append(f"🟠 Vence en {int(dias)} días")
+
+                severidades.append(
+                    f"🟠 Vence en {int(dias)} días"
+                )
+
                 colores.append("#fff3cd")
-                orden_criticidad.append(5)
+                ordenes.append(5)
 
             else:
-                severidades.append(f"🟡 Vence en {int(dias)} días")
-                colores.append("#fff8cc")
-                orden_criticidad.append(6)
 
+                severidades.append(
+                    f"🟡 Vence en {int(dias)} días"
+                )
+
+                colores.append("#fff8cc")
+                ordenes.append(6)
+
+        # ============================================
         # VENCIDOS
+        # ============================================
+
         else:
 
             vencido = abs(int(dias))
 
             if vencido > 365:
-                severidades.append(f"🚨 Vencido hace {vencido} días")
+
+                severidades.append(
+                    f"🚨 Vencido hace {vencido} días"
+                )
+
                 colores.append("#f8d7da")
-                orden_criticidad.append(1)
+                ordenes.append(1)
 
             elif vencido > 180:
-                severidades.append(f"🔴 Vencido hace {vencido} días")
+
+                severidades.append(
+                    f"🔴 Vencido hace {vencido} días"
+                )
+
                 colores.append("#f5c6cb")
-                orden_criticidad.append(2)
+                ordenes.append(2)
 
             elif vencido > 30:
-                severidades.append(f"🟠 Vencido hace {vencido} días")
+
+                severidades.append(
+                    f"🟠 Vencido hace {vencido} días"
+                )
+
                 colores.append("#ffe5b4")
-                orden_criticidad.append(3)
+                ordenes.append(3)
 
             else:
-                severidades.append(f"🟡 Vencido hace {vencido} días")
+
+                severidades.append(
+                    f"🟡 Vencido hace {vencido} días"
+                )
+
                 colores.append("#fff3cd")
-                orden_criticidad.append(4)
+                ordenes.append(4)
 
     df["ESTADO"] = severidades
     df["COLOR"] = colores
-    df["ORDEN_CRITICIDAD"] = orden_criticidad
+    df["ORDEN_CRITICIDAD"] = ordenes
 
-    # ============================================
-    # RESUMEN EJECUTIVO
-    # ============================================
+    return df
+
+# =====================================================
+# DASHBOARD
+# =====================================================
+
+def generar_dashboard(df):
 
     total = len(df)
 
-    criticos = len(df[df["ORDEN_CRITICIDAD"] == 1])
-
-    procesos_mayores = (
-        df.groupby("PROCESO_LIMPIO")
-        .size()
-        .sort_values(ascending=False)
-        .head(5)
+    criticos = len(
+        df[df["ORDEN_CRITICIDAD"] == 1]
     )
 
-    resumen_procesos = ""
+    vencidos = len(
+        df[df["DIAS_RESTANTES"] < 0]
+    )
 
-    for proceso, cantidad in procesos_mayores.items():
+    proximos = len(
+        df[
+            (df["DIAS_RESTANTES"] >= 0) &
+            (df["DIAS_RESTANTES"] <= DIAS_ALERTA)
+        ]
+    )
 
-        resumen_procesos += f"""
-        <li>
-            <b>{proceso}</b>: {cantidad}
-        </li>
-        """
-
-    html += f"""
+    html = f"""
     <div style="
-        background-color:#f4f4f4;
-        padding:15px;
-        border-radius:8px;
-        margin-bottom:25px;
+        display:flex;
+        gap:15px;
+        flex-wrap:wrap;
+        margin-bottom:30px;
         font-family:Arial;
     ">
 
-        <h3 style="margin-top:0;">
-            📌 Resumen Ejecutivo
-        </h3>
+        <div style="
+            flex:1;
+            min-width:180px;
+            background:#b71c1c;
+            color:white;
+            padding:20px;
+            border-radius:10px;
+            text-align:center;
+        ">
+            <div style="
+                font-size:32px;
+                font-weight:bold;
+            ">
+                {criticos}
+            </div>
 
-        <ul>
-            <li><b>Total documentos:</b> {total}</li>
-            <li><b>Documentos críticos:</b> {criticos}</li>
-        </ul>
+            <div>
+                🚨 Críticos
+            </div>
+        </div>
 
-        <b>Procesos con más registros:</b>
+        <div style="
+            flex:1;
+            min-width:180px;
+            background:#d84315;
+            color:white;
+            padding:20px;
+            border-radius:10px;
+            text-align:center;
+        ">
+            <div style="
+                font-size:32px;
+                font-weight:bold;
+            ">
+                {vencidos}
+            </div>
 
-        <ul>
-            {resumen_procesos}
-        </ul>
+            <div>
+                🔴 Vencidos
+            </div>
+        </div>
+
+        <div style="
+            flex:1;
+            min-width:180px;
+            background:#f9a825;
+            color:white;
+            padding:20px;
+            border-radius:10px;
+            text-align:center;
+        ">
+            <div style="
+                font-size:32px;
+                font-weight:bold;
+            ">
+                {proximos}
+            </div>
+
+            <div>
+                🟡 Próximos
+            </div>
+        </div>
+
+        <div style="
+            flex:1;
+            min-width:180px;
+            background:#1565c0;
+            color:white;
+            padding:20px;
+            border-radius:10px;
+            text-align:center;
+        ">
+            <div style="
+                font-size:32px;
+                font-weight:bold;
+            ">
+                {total}
+            </div>
+
+            <div>
+                📄 Total
+            </div>
+        </div>
 
     </div>
+    """
+
+    return html
+
+# =====================================================
+# GENERAR TABLA
+# =====================================================
+
+def generar_tabla(df, titulo):
+
+    if df.empty:
+        return ""
+
+    html = f"""
+    <h2 style="
+        font-family:Arial;
+        color:#1f4e78;
+        margin-top:40px;
+    ">
+        {titulo}
+    </h2>
     """
 
     # ============================================
@@ -316,28 +455,26 @@ def generar_tabla(df, titulo):
     for proceso, df_proceso in procesos:
 
         # ============================================
-        # ORDENAR POR CRITICIDAD
+        # ORDENAR
         # ============================================
 
         df_proceso = df_proceso.sort_values(
             by=[
-                "ORDEN_CRITICIDAD",
-                "DIAS_RESTANTES",
                 "TIPO_LIMPIO",
                 "CONSECUTIVO_ORDEN"
             ]
         )
 
         html += f"""
-        <h2 style="
-            background-color:#d9ead3;
+        <h3 style="
+            background:#d9ead3;
             padding:10px;
             border-radius:6px;
-            margin-top:35px;
             font-family:Arial;
+            margin-top:30px;
         ">
-            PROCESO: {proceso}
-        </h2>
+            📂 PROCESO: {proceso}
+        </h3>
         """
 
         filas = ""
@@ -348,12 +485,10 @@ def generar_tabla(df, titulo):
 
             consecutivo = row["CONSECUTIVO_LIMPIO"]
 
+            nombre_documento = row["NOMBRE_DOCUMENTO"]
+
             if consecutivo.isdigit():
                 consecutivo = consecutivo.zfill(2)
-
-            codigo = f"{proceso}-{tipo}-{consecutivo}"
-
-            codigo = " ".join(codigo.split())
 
             fecha_vencimiento = (
                 row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
@@ -366,20 +501,42 @@ def generar_tabla(df, titulo):
             color = row["COLOR"]
 
             filas += f"""
-            <tr style="background-color:{color};">
+            <tr style="
+                background-color:{color};
+            ">
 
                 <td style="
-                    white-space: nowrap;
                     font-weight:bold;
+                    white-space:nowrap;
+                    text-align:center;
                 ">
-                    {codigo}
+                    {tipo}
                 </td>
 
-                <td>
+                <td style="
+                    text-align:center;
+                    white-space:nowrap;
+                ">
+                    {consecutivo}
+                </td>
+
+                <td style="
+                    word-break:break-word;
+                ">
+                    {nombre_documento}
+                </td>
+
+                <td style="
+                    white-space:nowrap;
+                    text-align:center;
+                ">
                     {fecha_vencimiento}
                 </td>
 
-                <td>
+                <td style="
+                    font-weight:bold;
+                    white-space:nowrap;
+                ">
                     {estado}
                 </td>
 
@@ -390,22 +547,40 @@ def generar_tabla(df, titulo):
         <table
             border="1"
             cellspacing="0"
-            cellpadding="6"
+            cellpadding="8"
             style="
-                border-collapse: collapse;
-                font-family: Arial;
-                margin-bottom: 30px;
-                width: 100%;
+                border-collapse:collapse;
+                font-family:Arial;
+                margin-bottom:30px;
+                width:100%;
+                table-layout:fixed;
+                font-size:14px;
             "
         >
 
             <tr style="
-                background-color:#2f5597;
+                background-color:#1f4e78;
                 color:white;
             ">
-                <th>CODIGO</th>
-                <th>FECHA VENCIMIENTO</th>
-                <th>ESTADO</th>
+                <th style="width:90px;">
+                    TIPO
+                </th>
+
+                <th style="width:80px;">
+                    CONS
+                </th>
+
+                <th>
+                    NOMBRE DOCUMENTO
+                </th>
+
+                <th style="width:140px;">
+                    FECHA VENCIMIENTO
+                </th>
+
+                <th style="width:220px;">
+                    ESTADO
+                </th>
             </tr>
 
             {filas}
@@ -414,6 +589,7 @@ def generar_tabla(df, titulo):
         """
 
     return html
+
 # =====================================================
 # ENVIAR CORREO
 # =====================================================
@@ -464,9 +640,9 @@ def main():
 
     print("Preparando datos...")
 
-    print(df.columns.tolist())
-
     df = preparar_datos(df)
+
+    df = clasificar_severidad(df)
 
     proximos, vencidos = clasificar_alertas(df)
 
@@ -474,33 +650,61 @@ def main():
     print(f"Vencidos: {len(vencidos)}")
 
     if proximos.empty and vencidos.empty:
+
         print("No hay alertas para enviar")
         return
 
-    html = """
-    <h1 style="
+    total_criticos = len(
+        df[df["ORDEN_CRITICIDAD"] == 1]
+    )
+
+    asunto = (
+        f"🚨 {len(vencidos)} vencidos | "
+        f"{total_criticos} críticos | "
+        f"OHSQ-FO-34"
+    )
+
+    html = f"""
+    <div style="
         font-family:Arial;
-        background-color:#1f4e78;
-        color:white;
-        padding:15px;
-        border-radius:8px;
     ">
-        📋 Alerta revisión documental OHSQ-FO-34
-    </h1>
+
+        <h1 style="
+            background-color:#1f4e78;
+            color:white;
+            padding:18px;
+            border-radius:8px;
+        ">
+            📋 Alerta revisión documental OHSQ-FO-34
+        </h1>
+
+        <p style="
+            font-size:15px;
+            margin-top:20px;
+            margin-bottom:25px;
+        ">
+            Se requiere priorizar la gestión de los documentos
+            marcados como críticos para evitar incumplimientos
+            operacionales y de calidad.
+        </p>
+
+    </div>
     """
+
+    html += generar_dashboard(df)
 
     html += generar_tabla(
         proximos,
-        "Documentos próximos a vencer"
+        "🟡 Documentos próximos a vencer"
     )
 
     html += generar_tabla(
         vencidos,
-        "Documentos vencidos"
+        "🔴 Documentos vencidos"
     )
 
     enviar_correo(
-        "Alerta revisión documental OHSQ-FO-34",
+        asunto,
         html
     )
 
@@ -512,3 +716,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
