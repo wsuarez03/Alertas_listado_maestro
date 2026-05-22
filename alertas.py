@@ -186,6 +186,23 @@ def generar_tabla(df, titulo):
         .str.strip()
     )
 
+    df["CONSECUTIVO_LIMPIO"] = (
+        df["CONSECUTIVO"]
+        .astype(str)
+        .str.replace("\n", "", regex=False)
+        .str.replace("\r", "", regex=False)
+        .str.strip()
+    )
+
+    # ============================================
+    # CONSECUTIVO NUMERICO PARA ORDEN
+    # ============================================
+
+    df["CONSECUTIVO_ORDEN"] = pd.to_numeric(
+        df["CONSECUTIVO_LIMPIO"],
+        errors="coerce"
+    )
+
     # ============================================
     # AGRUPAR POR PROCESO
     # ============================================
@@ -193,6 +210,14 @@ def generar_tabla(df, titulo):
     procesos = df.groupby("PROCESO_LIMPIO")
 
     for proceso, df_proceso in procesos:
+
+        # ============================================
+        # ORDENAR POR TIPO Y CONSECUTIVO
+        # ============================================
+
+        df_proceso = df_proceso.sort_values(
+            by=["TIPO_LIMPIO", "CONSECUTIVO_ORDEN"]
+        )
 
         html += f"""
         <h2 style="
@@ -205,168 +230,65 @@ def generar_tabla(df, titulo):
         </h2>
         """
 
-        # ============================================
-        # VALIDAR SI EXISTEN VARIOS TIPOS
-        # ============================================
+        filas = ""
 
-        tipos_unicos = (
-            df_proceso["TIPO_LIMPIO"]
-            .dropna()
-            .unique()
-        )
+        for _, row in df_proceso.iterrows():
 
-        mostrar_tipo = len(tipos_unicos) > 1
+            tipo = row["TIPO_LIMPIO"]
 
-        # ============================================
-        # SI HAY VARIOS TIPOS
-        # ============================================
+            consecutivo = row["CONSECUTIVO_LIMPIO"]
 
-        if mostrar_tipo:
+            # Convertir 1 -> 01
+            if consecutivo.isdigit():
+                consecutivo = consecutivo.zfill(2)
 
-            grupos_tipo = df_proceso.groupby("TIPO_LIMPIO")
+            codigo = f"{proceso}-{tipo}-{consecutivo}"
 
-            for tipo, grupo in grupos_tipo:
+            codigo = " ".join(codigo.split())
 
-                html += f"""
-                <h3 style="
-                    margin-top:20px;
-                    color:#444;
-                ">
-                    TIPO: {tipo}
-                </h3>
-                """
+            fecha_vencimiento = (
+                row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
+                if pd.notna(row["FECHA_VENCIMIENTO"])
+                else "Sin fecha"
+            )
 
-                filas = ""
+            dias = row["DIAS_RESTANTES"]
 
-                for _, row in grupo.iterrows():
+            filas += f"""
+            <tr>
+                <td style="white-space: nowrap;">
+                    {codigo}
+                </td>
 
-                    consecutivo = (
-                        str(row["CONSECUTIVO"])
-                        .replace("\n", "")
-                        .replace("\r", "")
-                        .strip()
-                    )
+                <td>{fecha_vencimiento}</td>
 
-                    if consecutivo.isdigit():
-                        consecutivo = consecutivo.zfill(2)
-
-                    codigo = f"{proceso}-{tipo}-{consecutivo}"
-
-                    codigo = " ".join(codigo.split())
-
-                    fecha_vencimiento = (
-                        row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
-                        if pd.notna(row["FECHA_VENCIMIENTO"])
-                        else "Sin fecha"
-                    )
-
-                    dias = row["DIAS_RESTANTES"]
-
-                    filas += f"""
-                    <tr>
-                        <td style="white-space: nowrap;">
-                            {codigo}
-                        </td>
-
-                        <td>{fecha_vencimiento}</td>
-
-                        <td>{dias}</td>
-                    </tr>
-                    """
-
-                html += f"""
-                <table
-                    border="1"
-                    cellspacing="0"
-                    cellpadding="5"
-                    style="
-                        border-collapse: collapse;
-                        font-family: Arial;
-                        margin-bottom: 25px;
-                        width: 100%;
-                    "
-                >
-
-                    <tr style="background-color: #f2f2f2;">
-                        <th>CODIGO</th>
-                        <th>FECHA VENCIMIENTO</th>
-                        <th>DIAS</th>
-                    </tr>
-
-                    {filas}
-
-                </table>
-                """
-
-        # ============================================
-        # SI SOLO EXISTE UN TIPO
-        # ============================================
-
-        else:
-
-            filas = ""
-
-            for _, row in df_proceso.iterrows():
-
-                tipo = row["TIPO_LIMPIO"]
-
-                consecutivo = (
-                    str(row["CONSECUTIVO"])
-                    .replace("\n", "")
-                    .replace("\r", "")
-                    .strip()
-                )
-
-                if consecutivo.isdigit():
-                    consecutivo = consecutivo.zfill(2)
-
-                codigo = f"{proceso}-{tipo}-{consecutivo}"
-
-                codigo = " ".join(codigo.split())
-
-                fecha_vencimiento = (
-                    row["FECHA_VENCIMIENTO"].strftime("%Y-%m-%d")
-                    if pd.notna(row["FECHA_VENCIMIENTO"])
-                    else "Sin fecha"
-                )
-
-                dias = row["DIAS_RESTANTES"]
-
-                filas += f"""
-                <tr>
-                    <td style="white-space: nowrap;">
-                        {codigo}
-                    </td>
-
-                    <td>{fecha_vencimiento}</td>
-
-                    <td>{dias}</td>
-                </tr>
-                """
-
-            html += f"""
-            <table
-                border="1"
-                cellspacing="0"
-                cellpadding="5"
-                style="
-                    border-collapse: collapse;
-                    font-family: Arial;
-                    margin-bottom: 25px;
-                    width: 100%;
-                "
-            >
-
-                <tr style="background-color: #f2f2f2;">
-                    <th>CODIGO</th>
-                    <th>FECHA VENCIMIENTO</th>
-                    <th>DIAS</th>
-                </tr>
-
-                {filas}
-
-            </table>
+                <td>{dias}</td>
+            </tr>
             """
+
+        html += f"""
+        <table
+            border="1"
+            cellspacing="0"
+            cellpadding="5"
+            style="
+                border-collapse: collapse;
+                font-family: Arial;
+                margin-bottom: 25px;
+                width: 100%;
+            "
+        >
+
+            <tr style="background-color: #f2f2f2;">
+                <th>CODIGO</th>
+                <th>FECHA VENCIMIENTO</th>
+                <th>DIAS</th>
+            </tr>
+
+            {filas}
+
+        </table>
+        """
 
     return html
 # =====================================================
