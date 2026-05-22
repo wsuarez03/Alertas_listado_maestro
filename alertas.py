@@ -67,8 +67,12 @@ def cargar_excel(bytes_excel):
         header=3
     )
 
-    df.columns = [str(c).strip() for c in df.columns]
-    # NORMALIZAR NOMBRES DE COLUMNAS df.columns = ( df.columns .str.upper() .str.strip() )
+    df.columns = ( 
+        df.columns 
+        .astype(str) 
+        .str.strip() 
+        .str.upper() 
+    )
 
     print("COLUMNAS ENCONTRADAS:")
     for c in df.columns:
@@ -215,11 +219,11 @@ def clasificar_alertas(df):
     proximos = df[
         (df["DIAS_RESTANTES"] >= 0) &
         (df["DIAS_RESTANTES"] <= DIAS_ALERTA)
-    ]
+    ] .copy()
 
     vencidos = df[
         (df["DIAS_RESTANTES"] < 0)
-    ]
+    ] .copy()
 
     return proximos, vencidos
 
@@ -694,7 +698,11 @@ def main():
     </div>
     """
 
-    html += generar_dashboard(df)
+    df_alertas = pd.concat([ 
+        proximos, 
+        vencidos 
+    ]) 
+    html += generar_dashboard(df_alertas)
 
     html += generar_tabla(
         proximos,
