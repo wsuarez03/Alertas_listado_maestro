@@ -195,13 +195,117 @@ def generar_tabla(df, titulo):
     )
 
     # ============================================
-    # CONSECUTIVO NUMERICO PARA ORDEN
+    # CONSECUTIVO NUMERICO
     # ============================================
 
     df["CONSECUTIVO_ORDEN"] = pd.to_numeric(
         df["CONSECUTIVO_LIMPIO"],
         errors="coerce"
     )
+
+    # ============================================
+    # CLASIFICAR SEVERIDAD
+    # ============================================
+
+    severidades = []
+    colores = []
+    orden_criticidad = []
+
+    for dias in df["DIAS_RESTANTES"]:
+
+        # PROXIMOS A VENCER
+        if dias >= 0:
+
+            if dias <= 7:
+                severidades.append(f"🟠 Vence en {int(dias)} días")
+                colores.append("#fff3cd")
+                orden_criticidad.append(5)
+
+            else:
+                severidades.append(f"🟡 Vence en {int(dias)} días")
+                colores.append("#fff8cc")
+                orden_criticidad.append(6)
+
+        # VENCIDOS
+        else:
+
+            vencido = abs(int(dias))
+
+            if vencido > 365:
+                severidades.append(f"🚨 Vencido hace {vencido} días")
+                colores.append("#f8d7da")
+                orden_criticidad.append(1)
+
+            elif vencido > 180:
+                severidades.append(f"🔴 Vencido hace {vencido} días")
+                colores.append("#f5c6cb")
+                orden_criticidad.append(2)
+
+            elif vencido > 30:
+                severidades.append(f"🟠 Vencido hace {vencido} días")
+                colores.append("#ffe5b4")
+                orden_criticidad.append(3)
+
+            else:
+                severidades.append(f"🟡 Vencido hace {vencido} días")
+                colores.append("#fff3cd")
+                orden_criticidad.append(4)
+
+    df["ESTADO"] = severidades
+    df["COLOR"] = colores
+    df["ORDEN_CRITICIDAD"] = orden_criticidad
+
+    # ============================================
+    # RESUMEN EJECUTIVO
+    # ============================================
+
+    total = len(df)
+
+    criticos = len(df[df["ORDEN_CRITICIDAD"] == 1])
+
+    procesos_mayores = (
+        df.groupby("PROCESO_LIMPIO")
+        .size()
+        .sort_values(ascending=False)
+        .head(5)
+    )
+
+    resumen_procesos = ""
+
+    for proceso, cantidad in procesos_mayores.items():
+
+        resumen_procesos += f"""
+        <li>
+            <b>{proceso}</b>: {cantidad}
+        </li>
+        """
+
+    html += f"""
+    <div style="
+        background-color:#f4f4f4;
+        padding:15px;
+        border-radius:8px;
+        margin-bottom:25px;
+        font-family:Arial;
+    ">
+
+        <h3 style="margin-top:0;">
+            📌 Resumen Ejecutivo
+        </h3>
+
+        <ul>
+            <li><b>Total documentos:</b> {total}</li>
+            <li><b>Documentos críticos:</b> {criticos}</li>
+        </ul>
+
+        <b>Procesos con más registros:</b>
+
+        <ul>
+            {resumen_procesos}
+        </ul>
+
+    </div>
+    """
 
     # ============================================
     # AGRUPAR POR PROCESO
@@ -212,19 +316,25 @@ def generar_tabla(df, titulo):
     for proceso, df_proceso in procesos:
 
         # ============================================
-        # ORDENAR POR TIPO Y CONSECUTIVO
+        # ORDENAR POR CRITICIDAD
         # ============================================
 
         df_proceso = df_proceso.sort_values(
-            by=["TIPO_LIMPIO", "CONSECUTIVO_ORDEN"]
+            by=[
+                "ORDEN_CRITICIDAD",
+                "DIAS_RESTANTES",
+                "TIPO_LIMPIO",
+                "CONSECUTIVO_ORDEN"
+            ]
         )
 
         html += f"""
         <h2 style="
             background-color:#d9ead3;
-            padding:8px;
-            border-radius:5px;
-            margin-top:30px;
+            padding:10px;
+            border-radius:6px;
+            margin-top:35px;
+            font-family:Arial;
         ">
             PROCESO: {proceso}
         </h2>
@@ -238,7 +348,6 @@ def generar_tabla(df, titulo):
 
             consecutivo = row["CONSECUTIVO_LIMPIO"]
 
-            # Convertir 1 -> 01
             if consecutivo.isdigit():
                 consecutivo = consecutivo.zfill(2)
 
@@ -252,17 +361,28 @@ def generar_tabla(df, titulo):
                 else "Sin fecha"
             )
 
-            dias = row["DIAS_RESTANTES"]
+            estado = row["ESTADO"]
+
+            color = row["COLOR"]
 
             filas += f"""
-            <tr>
-                <td style="white-space: nowrap;">
+            <tr style="background-color:{color};">
+
+                <td style="
+                    white-space: nowrap;
+                    font-weight:bold;
+                ">
                     {codigo}
                 </td>
 
-                <td>{fecha_vencimiento}</td>
+                <td>
+                    {fecha_vencimiento}
+                </td>
 
-                <td>{dias}</td>
+                <td>
+                    {estado}
+                </td>
+
             </tr>
             """
 
@@ -270,19 +390,22 @@ def generar_tabla(df, titulo):
         <table
             border="1"
             cellspacing="0"
-            cellpadding="5"
+            cellpadding="6"
             style="
                 border-collapse: collapse;
                 font-family: Arial;
-                margin-bottom: 25px;
+                margin-bottom: 30px;
                 width: 100%;
             "
         >
 
-            <tr style="background-color: #f2f2f2;">
+            <tr style="
+                background-color:#2f5597;
+                color:white;
+            ">
                 <th>CODIGO</th>
                 <th>FECHA VENCIMIENTO</th>
-                <th>DIAS</th>
+                <th>ESTADO</th>
             </tr>
 
             {filas}
@@ -354,7 +477,17 @@ def main():
         print("No hay alertas para enviar")
         return
 
-    html = "<h1>Alerta revisión documental OHSQ-FO-34</h1>"
+    html = """
+    <h1 style="
+        font-family:Arial;
+        background-color:#1f4e78;
+        color:white;
+        padding:15px;
+        border-radius:8px;
+    ">
+        📋 Alerta revisión documental OHSQ-FO-34
+    </h1>
+    """
 
     html += generar_tabla(
         proximos,
